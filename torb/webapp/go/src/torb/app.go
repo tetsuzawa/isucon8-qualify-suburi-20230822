@@ -319,6 +319,7 @@ func main() {
 
 	var err error
 	db, err = sql.Open("mysql", dsn)
+	defer db.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -356,7 +357,7 @@ func main() {
 		cmd.Stdout = os.Stdout
 		err := cmd.Run()
 		if err != nil {
-			return nil
+			return resError(c, fmt.Errorf("initialize error: %w", err))
 		}
 
 		return c.NoContent(204)
