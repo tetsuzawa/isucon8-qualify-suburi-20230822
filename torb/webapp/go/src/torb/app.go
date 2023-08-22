@@ -315,6 +315,7 @@ func main() {
 		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"),
 		os.Getenv("DB_DATABASE"),
 	)
+	fmt.Println("dsn:", dsn)
 
 	var err error
 	db, err = sql.Open("mysql", dsn)
