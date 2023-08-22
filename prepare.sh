@@ -70,7 +70,7 @@ sudo systemctl restart openresty
 # sudo systemctl restart redis-server
 
 # slow log
-# MYSQL="mysql -h${DB_HOST} -P${DB_PORT} -u${DB_USER} -p${DB_PASS} ${DB_DATABASE}"
-# ${MYSQL} -e "set global slow_query_log_file = '${mysql_slow_log}'; set global long_query_time = 0; set global slow_query_log = ON;"
+MYSQL="mysql -h${DB_HOST} -P${DB_PORT} -uroot ${DB_DATABASE}"
+${MYSQL} -e "set global slow_query_log_file = '${mysql_slow_log}'; set global long_query_time = 0; set global slow_query_log = ON;"
 
 echo "OK"
