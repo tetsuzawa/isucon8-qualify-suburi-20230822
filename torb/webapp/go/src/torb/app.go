@@ -948,6 +948,7 @@ func renderReportCSV(c echo.Context, reports []Report) error {
 }
 
 func resError(c echo.Context, e string, status int) error {
+	c.Logger().Errorf("ERROR: %s", e)
 	if e == "" {
 		e = "unknown"
 	}
