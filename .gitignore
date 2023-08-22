@@ -3,3 +3,4 @@
 /go
 local
 xbuild
+/etc/nginx/logs
