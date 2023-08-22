@@ -357,7 +357,7 @@ func main() {
 		cmd.Stdout = os.Stdout
 		err := cmd.Run()
 		if err != nil {
-			return resError(c, fmt.Errorf("initialize error: %w", err))
+			return resError(c, fmt.Errorf("initialize error: %w", err).Error(), 500)
 		}
 
 		return c.NoContent(204)
