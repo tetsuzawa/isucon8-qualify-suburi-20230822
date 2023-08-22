@@ -33,6 +33,7 @@ make build
 mkdir -p /home/isucon/log/app
 #sudo logrotate -f /home/isucon/etc/logrotate.d/app
 sudo systemctl restart torb.go
+sudo systemctl -q status torb.go
 
 # ====== nginx ======
 # mkdir -p /home/isucon/log/nginx
@@ -55,6 +56,7 @@ sudo cp ${nginx_error_log} ${nginx_error_log}.prev
 sudo truncate -s 0 ${nginx_error_log}
 sudo openresty -t
 sudo systemctl restart openresty
+sudo systemctl -q status openresty
 
 # ====== mysql ======
 # sudo touch ${mysql_slow_log} ${mysql_error_log}
