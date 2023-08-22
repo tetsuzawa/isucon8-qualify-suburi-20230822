@@ -1,0 +1,17 @@
+/home/isucon/log/nginx/access.log {
+  missingok
+  ifempty
+  nocompress
+  copytruncate
+  rotate 10
+  su isucon isucon
+}
+
+/home/isucon/log/nginx/error.log {
+  missingok
+  ifempty
+  nocompress
+  copytruncate
+  rotate 10
+  su isucon isucon
+}

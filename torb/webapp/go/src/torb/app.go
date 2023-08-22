@@ -914,7 +914,10 @@ func main() {
 		return renderReportCSV(c, reports)
 	}, adminLoginRequired)
 
-	e.Start(":8080")
+	if err := e.Start(":8080"); err != nil {
+		log.Fatalln(err)
+	}
+
 }
 
 type Report struct {
