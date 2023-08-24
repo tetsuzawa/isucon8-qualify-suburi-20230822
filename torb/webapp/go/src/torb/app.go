@@ -401,12 +401,12 @@ func getEvent(eventID, loginUserID int64) (*Event, error) {
 
 		reservation, ok := sheetIDResarvationMap[sheet.ID]
 		if ok {
-			event.Remains++
-			event.Sheets[sheet.Rank].Remains++
-		} else {
 			sheet.Mine = reservation.UserID == loginUserID
 			sheet.Reserved = true
 			sheet.ReservedAtUnix = reservation.ReservedAt.Unix()
+		} else {
+			event.Remains++
+			event.Sheets[sheet.Rank].Remains++
 		}
 
 		event.Sheets[sheet.Rank].Detail = append(event.Sheets[sheet.Rank].Detail, sheet)
