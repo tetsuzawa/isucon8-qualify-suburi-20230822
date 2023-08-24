@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -950,6 +951,18 @@ func renderReportCSV(c echo.Context, reports []Report) error {
 
 func resError(c echo.Context, e string, status int) error {
 	c.Logger().Errorf("ERROR: %s", e)
+	i := 0
+	for {
+		pt, file, line, ok := runtime.Caller(i)
+		if !ok {
+			// 取得できなくなったら終了
+			break
+		}
+		funcName := runtime.FuncForPC(pt).Name()
+		c.Logger().Errorf("file=%s, line=%d, func=%v\n", file, line, funcName)
+		i += 1
+	}
+
 	if e == "" {
 		e = "unknown"
 	}
