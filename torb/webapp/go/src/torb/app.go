@@ -259,7 +259,7 @@ func getEvents(all bool) ([]*Event, error) {
 		return item.ID
 	})
 	var eventRankReservedCounts []EventSheetRankReservedCount
-	query, args, err := sqlx.In("SELECT event_id, sheets.`rank`, COUNT(*) AS reserved_count FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id, sheet_id ORDER BY reserved_at) AS rnk FROM reservations WHERE canceled_at IS NOT NULL) tmp JOIN sheets ON tmp.sheet_id = sheets.id WHERE rnk = 1 AND tmp.event_id IN (?) GROUP BY event_id, `rank`", eventIDs)
+	query, args, err := sqlx.In("SELECT event_id, sheets.`rank`, COUNT(*) AS reserved_count FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id, sheet_id ORDER BY reserved_at) AS rnk FROM reservations WHERE canceled_at IS NULL) tmp JOIN sheets ON tmp.sheet_id = sheets.id WHERE rnk = 1 AND tmp.event_id IN (?) GROUP BY event_id, `rank`", eventIDs)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get event rank reserved count: %w", err)
