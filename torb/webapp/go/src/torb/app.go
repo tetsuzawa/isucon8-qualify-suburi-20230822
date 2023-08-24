@@ -271,7 +271,12 @@ func getEvents(all bool) ([]*Event, error) {
 	eventMap := lo.SliceToMap(events, func(item *Event) (int64, *Event) {
 		item.Total = 1000
 		item.Remains = 1000
-		item.Sheets = make(map[string]*Sheets)
+		item.Sheets = map[string]*Sheets{
+			"S": {},
+			"A": {},
+			"B": {},
+			"C": {},
+		}
 		return item.ID, item
 	})
 
