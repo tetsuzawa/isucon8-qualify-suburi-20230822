@@ -5,12 +5,11 @@ set -eu
 ROOT_DIR=$(cd $(dirname $0)/..; pwd)
 DB_DIR="$ROOT_DIR/db"
 BENCH_DIR="$ROOT_DIR/bench"
-DB_HOST=192.168.0.12
 
 export MYSQL_PWD=isucon
 
-mysql -h${DB_HOST} -uisucon -e "DROP DATABASE IF EXISTS torb; CREATE DATABASE torb;"
-mysql -h${DB_HOST} -uisucon torb < "$DB_DIR/schema.sql"
+mysql -uisucon -e "DROP DATABASE IF EXISTS torb; CREATE DATABASE torb;"
+mysql -uisucon torb < "$DB_DIR/schema.sql"
 
 if [ ! -f "$DB_DIR/isucon8q-initial-dataset.sql.gz" ]; then
   echo "Run the following command beforehand." 1>&2
