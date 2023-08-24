@@ -254,11 +254,20 @@ func getEvents(all bool) ([]*Event, error) {
 		}
 		events = append(events, &event)
 	}
+
+	eventIDs := lo.Map(events, func(item *Event, idx int) int64 {
+		return item.ID
+	})
 	var eventRankReservedCounts []EventSheetRankReservedCount
-	err = db.Select(&eventRankReservedCounts, "SELECT  event_id, sheets.`rank`, COUNT(*) AS reserved_count FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id, sheet_id ORDER BY reserved_at) AS rnk FROM reservations ) tmp JOIN sheets ON tmp.sheet_id = sheets.id WHERE rnk = 1 GROUP BY event_id, `rank`;")
+	query, args, err := sqlx.In("SELECT  event_id, sheets.`rank`, COUNT(*) AS reserved_count FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id, sheet_id ORDER BY reserved_at) AS rnk FROM reservations ) tmp JOIN sheets ON tmp.sheet_id = sheets.id WHERE rnk = 1 AND tmp.event_id IN (?) GROUP BY event_id, `rank`", eventIDs)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get event rank reserved count: %w", err)
 	}
+	if err := db.Select(&eventRankReservedCounts, query, args...); err != nil {
+		return nil, fmt.Errorf("failed to get event rank reserved count: %w", err)
+	}
+
 	eventMap := lo.SliceToMap(events, func(item *Event) (int64, *Event) {
 		item.Total = 1000
 		item.Remains = 1000
@@ -266,18 +275,20 @@ func getEvents(all bool) ([]*Event, error) {
 	})
 
 	for _, eventRankReservedCount := range eventRankReservedCounts {
-		eventMap[eventRankReservedCount.EventID].Remains = eventMap[eventRankReservedCount.EventID].Remains - int(eventRankReservedCount.ReservedCount)
-		sheetTotal, err := getSheetTotal(eventRankReservedCount.Rank)
-		if err != nil {
-			return nil, err
+		if _, ok := eventMap[eventRankReservedCount.EventID]; ok {
+			eventMap[eventRankReservedCount.EventID].Remains = eventMap[eventRankReservedCount.EventID].Remains - int(eventRankReservedCount.ReservedCount)
+			sheetTotal, err := getSheetTotal(eventRankReservedCount.Rank)
+			if err != nil {
+				return nil, err
+			}
+			eventMap[eventRankReservedCount.EventID].Sheets[eventRankReservedCount.Rank].Total = sheetTotal
+			eventMap[eventRankReservedCount.EventID].Sheets[eventRankReservedCount.Rank].Remains = sheetTotal - int(eventRankReservedCount.ReservedCount)
+			sheetPrice, err := getSheetPrice(eventRankReservedCount.Rank)
+			if err != nil {
+				return nil, err
+			}
+			eventMap[eventRankReservedCount.EventID].Sheets[eventRankReservedCount.Rank].Price = eventMap[eventRankReservedCount.EventID].Price + sheetPrice
 		}
-		eventMap[eventRankReservedCount.EventID].Sheets[eventRankReservedCount.Rank].Total = sheetTotal
-		eventMap[eventRankReservedCount.EventID].Sheets[eventRankReservedCount.Rank].Remains = sheetTotal - int(eventRankReservedCount.ReservedCount)
-		sheetPrice, err := getSheetPrice(eventRankReservedCount.Rank)
-		if err != nil {
-			return nil, err
-		}
-		eventMap[eventRankReservedCount.EventID].Sheets[eventRankReservedCount.Rank].Price = eventMap[eventRankReservedCount.EventID].Price + sheetPrice
 	}
 	eventsNew := lo.MapToSlice(eventMap, func(id int64, event *Event) *Event {
 		return event
