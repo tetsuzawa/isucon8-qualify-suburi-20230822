@@ -276,7 +276,7 @@ func getEvents(all bool) ([]*Event, error) {
 			"S": {Total: 50, Remains: 50, Price: item.Price + sheetPriceMap["S"]},
 			"A": {Total: 150, Remains: 150, Price: item.Price + sheetPriceMap["A"]},
 			"B": {Total: 300, Remains: 300, Price: item.Price + sheetPriceMap["B"]},
-			"C": {Total: 500, Remains: 300, Price: item.Price + sheetPriceMap["C"]},
+			"C": {Total: 500, Remains: 500, Price: item.Price + sheetPriceMap["C"]},
 		}
 		return item.ID, item
 	})
