@@ -485,6 +485,7 @@ func main() {
 		}
 		for i, v := range events {
 			events[i] = sanitizeEvent(v)
+			fmt.Printf("eventid: %s   sheet remains: S: %d  A: %d  B: %d  c: %d \n", v.ID, v.Sheets["S"].Remains, v.Sheets["A"].Remains, v.Sheets["B"].Remains, v.Sheets["C"].Remains)
 		}
 		return c.Render(200, "index.tmpl", echo.Map{
 			"events": events,
