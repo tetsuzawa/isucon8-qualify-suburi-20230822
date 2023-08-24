@@ -351,12 +351,14 @@ func getEvent(eventID, loginUserID int64) (*Event, error) {
 		"C": &Sheets{},
 	}
 
+	// master cache
 	rows, err := db.Query("SELECT * FROM sheets ORDER BY `rank`, num")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
+	var sheets []*Sheet
 	for rows.Next() {
 		var sheet Sheet
 		if err := rows.Scan(&sheet.ID, &sheet.Rank, &sheet.Num, &sheet.Price); err != nil {
@@ -382,22 +384,32 @@ func getEvent(eventID, loginUserID int64) (*Event, error) {
 		//C,500
 		//S,50
 		event.Sheets[sheet.Rank].Total++
+		sheets = append(sheets, &sheet)
+	}
 
-		//fmt.Printf("getEvent event_id: %v   sheet_id: %v", event.ID, sheet.ID)
-		var reservation Reservation
-		err = db.QueryRow("SELECT id, event_id, sheet_id, user_id, reserved_at, canceled_at FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id, sheet_id ORDER BY reserved_at) AS rnk FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL) tmp WHERE rnk = 1;", event.ID, sheet.ID).Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt)
-		if err == nil {
-			sheet.Mine = reservation.UserID == loginUserID
-			sheet.Reserved = true
-			sheet.ReservedAtUnix = reservation.ReservedAt.Unix()
-		} else if err == sql.ErrNoRows {
+	var reservations []Reservation
+	err = db.Select(&reservations, "SELECT id, event_id, sheet_id, user_id, reserved_at, canceled_at FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id, sheet_id ORDER BY reserved_at) AS rnk FROM reservations WHERE event_id = ? AND canceled_at IS NULL) tmp WHERE rnk = 1;", event.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get event reservations: %w", err)
+	}
+
+	sheetIDResarvationMap := lo.SliceToMap(reservations, func(reservation Reservation) (int64, *Reservation) {
+		return reservation.SheetID, &reservation
+	})
+
+	for _, sheet := range sheets {
+
+		reservation, ok := sheetIDResarvationMap[sheet.ID]
+		if ok {
 			event.Remains++
 			event.Sheets[sheet.Rank].Remains++
 		} else {
-			return nil, err
+			sheet.Mine = reservation.UserID == loginUserID
+			sheet.Reserved = true
+			sheet.ReservedAtUnix = reservation.ReservedAt.Unix()
 		}
 
-		event.Sheets[sheet.Rank].Detail = append(event.Sheets[sheet.Rank].Detail, &sheet)
+		event.Sheets[sheet.Rank].Detail = append(event.Sheets[sheet.Rank].Detail, sheet)
 	}
 
 	return &event, nil
