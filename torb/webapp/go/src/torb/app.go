@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"html/template"
 	"io"
 	"log"
@@ -22,6 +23,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/middleware"
+	"github.com/samber/lo"
 )
 
 type User struct {
@@ -222,6 +224,12 @@ func getLoginAdministrator(c echo.Context) (*Administrator, error) {
 //	return events, nil
 //}
 
+type EventSheetRankReservedCount struct {
+	EventID       int64  `db:"event_id"`
+	Rank          string `db:"rank"`
+	ReservedCount int64  `db:"reserved_count"`
+}
+
 func getEvents(all bool) ([]*Event, error) {
 	tx, err := db.Begin()
 	if err != nil {
@@ -246,18 +254,73 @@ func getEvents(all bool) ([]*Event, error) {
 		}
 		events = append(events, &event)
 	}
+	var eventRankReservedCounts []EventSheetRankReservedCount
+	err = db.Select(&eventRankReservedCounts, "SELECT  event_id, sheets.`rank`, COUNT(*) AS reserved_count FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id, sheet_id ORDER BY reserved_at) AS rnk FROM reservations ) tmp JOIN sheets ON tmp.sheet_id = sheets.id WHERE rnk = 1 GROUP BY event_id, `rank`;")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get event rank reserved count: %w", err)
+	}
+	eventMap := lo.SliceToMap(events, func(item *Event) (int64, *Event) {
+		item.Total = 1000
+		item.Remains = 1000
+		return item.ID, item
+	})
 
-	for i, v := range events {
-		event, err := getEvent(v.ID, -1)
+	for _, eventRankReservedCount := range eventRankReservedCounts {
+		eventMap[eventRankReservedCount.EventID].Remains = eventMap[eventRankReservedCount.EventID].Remains - int(eventRankReservedCount.ReservedCount)
+		sheetTotal, err := getSheetTotal(eventRankReservedCount.Rank)
 		if err != nil {
 			return nil, err
 		}
-		for rank := range event.Sheets {
-			event.Sheets[rank].Detail = nil
+		eventMap[eventRankReservedCount.EventID].Sheets[eventRankReservedCount.Rank].Total = sheetTotal
+		eventMap[eventRankReservedCount.EventID].Sheets[eventRankReservedCount.Rank].Remains = sheetTotal - int(eventRankReservedCount.ReservedCount)
+		sheetPrice, err := getSheetPrice(eventRankReservedCount.Rank)
+		if err != nil {
+			return nil, err
 		}
-		events[i] = event
+		eventMap[eventRankReservedCount.EventID].Sheets[eventRankReservedCount.Rank].Price = eventMap[eventRankReservedCount.EventID].Price + sheetPrice
 	}
+	eventsNew := lo.MapToSlice(eventMap, func(id int64, event *Event) *Event {
+		return event
+	})
+	sort.Slice(eventsNew, func(i, j int) bool {
+		return eventsNew[i].ID < eventsNew[j].ID
+	})
+
 	return events, nil
+}
+
+func getSheetPrice(rank string) (int64, error) {
+	switch rank {
+	case "S":
+		return 5000, nil
+	case "A":
+		return 3000, nil
+	case "B":
+		return 1000, nil
+	case "C":
+		return 0, nil
+	default:
+		return 0, errors.New("invalid rank")
+	}
+}
+
+// A,150
+// B,300
+// C,500
+// S,50
+func getSheetTotal(rank string) (int, error) {
+	switch rank {
+	case "S":
+		return 50, nil
+	case "A":
+		return 150, nil
+	case "B":
+		return 300, nil
+	case "C":
+		return 500, nil
+	default:
+		return 0, errors.New("invalid rank")
+	}
 }
 
 func getEvent(eventID, loginUserID int64) (*Event, error) {
@@ -283,7 +346,19 @@ func getEvent(eventID, loginUserID int64) (*Event, error) {
 		if err := rows.Scan(&sheet.ID, &sheet.Rank, &sheet.Num, &sheet.Price); err != nil {
 			return nil, err
 		}
-		event.Sheets[sheet.Rank].Price = event.Price + sheet.Price
+
+		//sheet.price
+		//S,5000
+		//A,3000
+		//B,1000
+		//C,0
+
+		sheetPrice, err := getSheetPrice(sheet.Rank)
+		if err != nil {
+			return nil, fmt.Errorf("getSheetPrice: %v", sheet.Rank)
+		}
+		event.Sheets[sheet.Rank].Price = event.Price + sheetPrice
+
 		// 1000固定
 		event.Total++
 		//A,150
@@ -294,7 +369,7 @@ func getEvent(eventID, loginUserID int64) (*Event, error) {
 
 		//fmt.Printf("getEvent event_id: %v   sheet_id: %v", event.ID, sheet.ID)
 		var reservation Reservation
-		err := db.QueryRow("SELECT id, event_id, sheet_id, user_id, reserved_at, canceled_at FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id, sheet_id ORDER BY reserved_at) AS rnk FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL) tmp WHERE rnk = 1;", event.ID, sheet.ID).Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt)
+		err = db.QueryRow("SELECT id, event_id, sheet_id, user_id, reserved_at, canceled_at FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id, sheet_id ORDER BY reserved_at) AS rnk FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL) tmp WHERE rnk = 1;", event.ID, sheet.ID).Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt)
 		if err == nil {
 			sheet.Mine = reservation.UserID == loginUserID
 			sheet.Reserved = true
@@ -352,7 +427,7 @@ func (r *Renderer) Render(w io.Writer, name string, data interface{}, c echo.Con
 	return r.templates.ExecuteTemplate(w, name, data)
 }
 
-var db *sql.DB
+var db *sqlx.DB
 
 func main() {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&charset=utf8mb4",
@@ -363,7 +438,7 @@ func main() {
 	fmt.Println("dsn:", dsn)
 
 	var err error
-	db, err = sql.Open("mysql", dsn)
+	db, err = sqlx.Open("mysql", dsn)
 	defer db.Close()
 	if err != nil {
 		log.Fatal(err)
