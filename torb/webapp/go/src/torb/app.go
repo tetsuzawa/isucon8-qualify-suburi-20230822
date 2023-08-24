@@ -272,10 +272,10 @@ func getEvents(all bool) ([]*Event, error) {
 		item.Total = 1000
 		item.Remains = 1000
 		item.Sheets = map[string]*Sheets{
-			"S": {},
-			"A": {},
-			"B": {},
-			"C": {},
+			"S": {Total: 50},
+			"A": {Total: 150},
+			"B": {Total: 300},
+			"C": {Total: 500},
 		}
 		return item.ID, item
 	})
