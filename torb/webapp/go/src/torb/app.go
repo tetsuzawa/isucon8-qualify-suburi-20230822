@@ -185,6 +185,43 @@ func getLoginAdministrator(c echo.Context) (*Administrator, error) {
 	return &administrator, err
 }
 
+//func getEvents(all bool) ([]*Event, error) {
+//	tx, err := db.Begin()
+//	if err != nil {
+//		return nil, err
+//	}
+//	defer tx.Commit()
+//
+//	rows, err := tx.Query("SELECT * FROM events ORDER BY id ASC")
+//	if err != nil {
+//		return nil, err
+//	}
+//	defer rows.Close()
+//
+//	var events []*Event
+//	for rows.Next() {
+//		var event Event
+//		if err := rows.Scan(&event.ID, &event.Title, &event.PublicFg, &event.ClosedFg, &event.Price); err != nil {
+//			return nil, err
+//		}
+//		if !all && !event.PublicFg {
+//			continue
+//		}
+//		events = append(events, &event)
+//	}
+//	for i, v := range events {
+//		event, err := getEvent(v.ID, -1)
+//		if err != nil {
+//			return nil, err
+//		}
+//		for k := range event.Sheets {
+//			event.Sheets[k].Detail = nil
+//		}
+//		events[i] = event
+//	}
+//	return events, nil
+//}
+
 func getEvents(all bool) ([]*Event, error) {
 	tx, err := db.Begin()
 	if err != nil {
@@ -209,13 +246,14 @@ func getEvents(all bool) ([]*Event, error) {
 		}
 		events = append(events, &event)
 	}
+
 	for i, v := range events {
 		event, err := getEvent(v.ID, -1)
 		if err != nil {
 			return nil, err
 		}
-		for k := range event.Sheets {
-			event.Sheets[k].Detail = nil
+		for rank := range event.Sheets {
+			event.Sheets[rank].Detail = nil
 		}
 		events[i] = event
 	}
@@ -246,7 +284,12 @@ func getEvent(eventID, loginUserID int64) (*Event, error) {
 			return nil, err
 		}
 		event.Sheets[sheet.Rank].Price = event.Price + sheet.Price
+		// 1000固定
 		event.Total++
+		//A,150
+		//B,300
+		//C,500
+		//S,50
 		event.Sheets[sheet.Rank].Total++
 
 		fmt.Printf("getEvent event_id: %v   sheet_id: %v", event.ID, sheet.ID)
@@ -419,7 +462,7 @@ func main() {
 			return resError(c, "forbidden", 403)
 		}
 
-		rows, err := db.Query("SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num FROM reservations r INNER JOIN sheets s ON s.id = r.sheet_id WHERE r.user_id = ? ORDER BY IFNULL(r.canceled_at, r.reserved_at) DESC LIMIT 5", user.ID)
+		rows, err := db.Query("SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num FROM reservations r INNER JOIN sheets s ON r.user_id = ? AND s.id = r.sheet_id WHERE r.user_id = ? ORDER BY IFNULL(r.canceled_at, r.reserved_at) DESC LIMIT 5", user.ID, user.ID)
 		if err != nil {
 			return err
 		}

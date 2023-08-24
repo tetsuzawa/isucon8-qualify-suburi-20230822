@@ -21,3 +21,4 @@ fi
 mysql -h${DB_HOST} -uisucon torb -e 'ALTER TABLE reservations DROP KEY event_id_and_sheet_id_idx'
 gzip -dc "$DB_DIR/isucon8q-initial-dataset.sql.gz" | mysql  -h${DB_HOST} -uisucon torb
 mysql -h${DB_HOST} -uisucon torb -e 'ALTER TABLE reservations ADD KEY event_id_and_sheet_id_idx (event_id, sheet_id)'
+mysql -h${DB_HOST} -uisucon torb < "$DB_DIR/taki.sql"

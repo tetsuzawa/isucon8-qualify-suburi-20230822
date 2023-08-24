@@ -3,8 +3,9 @@ module torb
 go 1.20
 
 require (
-	github.com/go-sql-driver/mysql v1.4.1-0.20180719071942-99ff426eb706
+	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gorilla/sessions v1.1.1
+	github.com/jmoiron/sqlx v1.3.5
 	github.com/labstack/echo v3.3.5-retag.0.20180815143527-74f9806b3442+incompatible
 	github.com/labstack/echo-contrib v0.0.0-20180303034000-93dd5f30d581
 )
@@ -21,5 +22,4 @@ require (
 	github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4 // indirect
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2 // indirect
 	golang.org/x/sys v0.11.0 // indirect
-	google.golang.org/appengine v1.6.7 // indirect
 )
