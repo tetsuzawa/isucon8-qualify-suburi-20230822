@@ -273,10 +273,10 @@ func getEvents(all bool) ([]*Event, error) {
 		item.Remains = 1000
 
 		item.Sheets = map[string]*Sheets{
-			"S": {Total: 50, Price: item.Price + sheetPriceMap["S"]},
-			"A": {Total: 150, Price: item.Price + sheetPriceMap["A"]},
-			"B": {Total: 300, Price: item.Price + sheetPriceMap["B"]},
-			"C": {Total: 500, Price: item.Price + sheetPriceMap["C"]},
+			"S": {Total: 50, Remains: 50, Price: item.Price + sheetPriceMap["S"]},
+			"A": {Total: 150, Remains: 150, Price: item.Price + sheetPriceMap["A"]},
+			"B": {Total: 300, Remains: 300, Price: item.Price + sheetPriceMap["B"]},
+			"C": {Total: 500, Remains: 300, Price: item.Price + sheetPriceMap["C"]},
 		}
 		return item.ID, item
 	})
@@ -286,11 +286,6 @@ func getEvents(all bool) ([]*Event, error) {
 			return nil, fmt.Errorf("event not found: %d", eventRankReservedCount.EventID)
 		}
 		eventMap[eventRankReservedCount.EventID].Remains = eventMap[eventRankReservedCount.EventID].Remains - int(eventRankReservedCount.ReservedCount)
-		sheetTotal, err := getSheetTotal(eventRankReservedCount.Rank)
-		if err != nil {
-			return nil, err
-		}
-		eventMap[eventRankReservedCount.EventID].Sheets[eventRankReservedCount.Rank].Total = sheetTotal
 		eventMap[eventRankReservedCount.EventID].Sheets[eventRankReservedCount.Rank].Remains = sheetTotal - int(eventRankReservedCount.ReservedCount)
 	}
 	eventsNew := lo.MapToSlice(eventMap, func(id int64, event *Event) *Event {
