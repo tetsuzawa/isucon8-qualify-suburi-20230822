@@ -286,7 +286,7 @@ func getEvents(all bool) ([]*Event, error) {
 			return nil, fmt.Errorf("event not found: %d", eventRankReservedCount.EventID)
 		}
 		eventMap[eventRankReservedCount.EventID].Remains = eventMap[eventRankReservedCount.EventID].Remains - int(eventRankReservedCount.ReservedCount)
-		eventMap[eventRankReservedCount.EventID].Sheets[eventRankReservedCount.Rank].Remains = sheetTotal - int(eventRankReservedCount.ReservedCount)
+		eventMap[eventRankReservedCount.EventID].Sheets[eventRankReservedCount.Rank].Remains = eventMap[eventRankReservedCount.EventID].Sheets[eventRankReservedCount.Rank].Remains - int(eventRankReservedCount.ReservedCount)
 	}
 	eventsNew := lo.MapToSlice(eventMap, func(id int64, event *Event) *Event {
 		return event
