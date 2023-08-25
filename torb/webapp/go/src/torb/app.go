@@ -751,7 +751,8 @@ func main() {
 			}
 
 			c.Logger().Debugf("sheet: %v", sheet.ID)
-			if err := tx.QueryRow("SELECT * FROM sheets WHERE id = ? FOR UPDATE", sheet.ID).Err(); err != nil {
+			var id int64
+			if err := tx.Get(&id, "SELECT * FROM sheets WHERE id = ? FOR UPDATE"); err != nil {
 				if err == sql.ErrNoRows {
 					rerr := tx.Rollback()
 					log.Println("re-try: rollback by", err, "rollback error:", rerr)
