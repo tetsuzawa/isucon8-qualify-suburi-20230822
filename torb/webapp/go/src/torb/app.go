@@ -753,28 +753,30 @@ func main() {
 			c.Logger().Debugf("sheet: %v", sheet.ID)
 			if err := tx.QueryRow("SELECT * FROM sheets WHERE id = ? FOR UPDATE", sheet.ID).Err(); err != nil {
 				if err == sql.ErrNoRows {
-					tx.Rollback()
+					rerr := tx.Rollback()
+					log.Println("re-try: rollback by", err, "rollback error:", rerr)
 					return resError(c, "sold_out", 409)
 				}
-				tx.Rollback()
+				rerr := tx.Rollback()
+				log.Println("re-try: 5 rollback by", err, "rollback error:", rerr)
 				return err
 			}
 
 			res, err := tx.Exec("INSERT INTO reservations (event_id, sheet_id, user_id, reserved_at) VALUES (?, ?, ?, ?)", event.ID, sheet.ID, user.ID, time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 			if err != nil {
-				tx.Rollback()
-				log.Println("re-try: 1 rollback by", err)
+				rerr := tx.Rollback()
+				log.Println("re-try: 1 rollback by", err, "rollback error:", rerr)
 				continue
 			}
 			reservationID, err = res.LastInsertId()
 			if err != nil {
-				tx.Rollback()
-				log.Println("re-try: 2 rollback by", err)
+				rerr := tx.Rollback()
+				log.Println("re-try: 2 rollback by", err, "rollback error:", rerr)
 				continue
 			}
 			if err := tx.Commit(); err != nil {
-				tx.Rollback()
-				log.Println("re-try: 3 rollback by", err)
+				rerr := tx.Rollback()
+				log.Println("re-try: 3 rollback by", err, "rollback error:", rerr)
 				continue
 			}
 
